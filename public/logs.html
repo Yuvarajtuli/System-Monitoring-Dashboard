@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Job Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .chart-container {
+            width: 45%;
+            margin: 20px;
+            float: left;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid black;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+        caption{
+            text-align: left;
+            padding: 20px;
+            font-size: 30px;
+            font-weight: bold;
+
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <h1>System Jobs Monitoring Dashboard</h1>
+    <div style="display: block;">
+        <div class="chart-container">
+            <canvas id="cpuUsageChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="memUsageChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <canvas id="diskUsageChart"></canvas>
+        </div>
+    </div>
+        <table id="cpuTable">
+            <caption >CPU Usage</caption>
+            <thead>
+                <tr>
+                    <th>PID</th>
+                    <th>PPID</th>
+                    <th>CMD</th>
+                    <th>MEM</th>
+                    <th>CPU</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    <table id="memTable">
+        <caption >Memory Usage</caption>
+        <thead>
+            <tr>
+                <th>PID</th>
+                <th>PPID</th>
+                <th>CMD</th>
+                <th>MEM</th>
+                <th>CPU</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <table id="diskTable">
+        <caption >Disk Usage</caption>
+        <thead>
+            <tr>
+                <th>Filesystem</th>
+                <th>Size</th>
+                <th>Used</th>
+                <th>Available</th>
+                <th>Use%</th>
+                <th>Mounted On</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            async function fetchData() {
+                try {
+                    const response = await fetch('/api/logs');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const data = await response.json();
+                    console.log('Fetched data:', data);
+                    return data;
+                } catch (error) {
+                    console.error('Failed to fetch data:', error);
+                    return null;
+                }
+            }
+
+            async function renderCharts() {
+                const data = await fetchData();
+                if (data) {
+
+                    createChart('cpuUsageChart', parseChartData(data.cpu_usage, 'cpu'));
+                    createChart('memUsageChart', parseChartData(data.mem_usage, 'mem'));
+                    createChart('diskUsageChart', parseChartData(data.disk_usage, 'use%'));
+
+                    populateTable('cpuTable', data.cpu_usage);
+                    populateTable('memTable', data.mem_usage);
+                    populateTable('diskTable', data.disk_usage);                    
+                }
+            }
+
+            function populateTable(tableId, dataString) {
+                const tableBody = document.getElementById(tableId).getElementsByTagName('tbody')[0];
+                tableBody.innerHTML = ''; // Clear the table body
+
+                const rows = dataString.trim().split('\n');
+                console.log("Hi the data inside the table is : ");
+                rows.forEach((row) => {
+                    try {
+                        const data = JSON.parse(row);
+                        const tr = document.createElement('tr');
+                        for (const key in data) {
+                            const td = document.createElement('td');
+                            td.textContent = data[key];
+                            tr.appendChild(td);
+                        }
+                        tableBody.appendChild(tr);
+                    } catch (error) {
+                        console.error('Error parsing row:', row, error);
+                    }
+                });
+            }
+
+            function parseChartData(dataString, key) {
+                const labels = [];
+                const values = [];
+                const rows = dataString.trim().split('\n');
+
+                rows.forEach((row, index) => {
+                    try {
+                        const data = JSON.parse(row);
+                        if (data.cmd !== undefined && data[key] !== undefined) {
+                            labels.push(data.cmd);
+                            values.push(parseFloat(data[key]));
+                        } else {
+                            console.warn(`Row ${index} does not contain the expected keys: ${row}`);
+                        }
+                    } catch (error) {
+                        console.error(`Error parsing row ${index}:`, row, error);
+                    }
+                });
+
+                return { labels, values };
+            }
+
+
+            function createChart(chartId, chartData) {
+                const ctx = document.getElementById(chartId).getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: [{
+                            label: chartId,
+                            data: chartData.values,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            await renderCharts();
+            setInterval(renderCharts, 1000); // Fetch and render data every 10 seconds
+        });
+    </script>
+</body>
+
+</html>

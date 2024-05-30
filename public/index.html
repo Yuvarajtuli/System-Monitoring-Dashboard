@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Monitoring Dashboard</title>
+    <style>
+        body {
+            display: flex;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        .navbar {
+            width: 200px;
+            background-color: #333;
+            display: flex;
+            flex-direction: column;
+        }
+        .navbar a {
+            padding: 15px;
+            text-decoration: none;
+            color: white;
+            text-align: left;
+            display: block;
+        }
+        .navbar a:hover {
+            background-color: #575757;
+        }
+        .content {
+            flex-grow: 1;
+            padding: 0px;
+        }
+        iframe {
+            width: 100%;
+            height: 700px;
+            border: none;
+            margin: 0;
+            padding: 0;
+            
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="/metrics" target="contentFrame" style="margin-top: 20px;">System Metrics</a>
+        <a href="/logs" target="contentFrame">System Jobs</a>
+    </div>
+    <div class="content">
+        <iframe name="contentFrame" src="/metrics"></iframe>
+    </div>
+</body>
+</html>

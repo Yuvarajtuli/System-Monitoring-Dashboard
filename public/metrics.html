@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Performance Metrics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      .canvasStyle{
+        width: 250px !important;
+        height: 250px !important;
+        aspect-ratio:400px 400px !important;
+        display: inline-block !important;
+      }
+      .chart-container {
+            width: 250px;
+            height: 250px;
+            margin: 20px;
+            display: inline-block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+      </style>
+</head>
+<body>
+    <h1>System Performance Dashboard</h1>
+    <br>
+    <div class="chart-container">
+        <canvas id="ramChart" class="canvasStyle"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="cpuChart" class="canvasStyle"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="diskChart" class="canvasStyle"></canvas>
+    </div>
+    <table id="metricsTable">
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+          // Function to fetch data from the server
+          async function fetchData() {
+              try {
+                  const response = await fetch('/api/metrics');
+                  if (!response.ok) throw new Error('Network response was not ok');
+                  const data = await response.json();
+                  console.log('Fetched data:', data);
+                  return data;
+              } catch (error) {
+                  console.error('Failed to fetch data:', error);
+                  return null;
+              }
+          }
+
+          // Initial chart objects
+          let ramChart, cpuChart, diskChart;
+
+          // Function to initialize or update pie chart
+          function updatePieChart(chart, canvasId, label, dataValue, totalValue, color) {
+              if (chart) {
+                  // Update existing chart
+                  chart.data.datasets[0].data = [dataValue, totalValue - dataValue];
+                  chart.update();
+              } else {
+                  // Create new chart
+                  const chartCanvas = document.getElementById(canvasId).getContext('2d');
+                  chart = new Chart(chartCanvas, {
+                      type: 'pie',
+                      data: {
+                          labels: [label, 'Unused'],
+                          datasets: [{
+                              data: [dataValue, totalValue - dataValue],
+                              backgroundColor: [color, '#36a2eb']
+                          }]
+                      },
+                      options: {
+                          title: {
+                              display: true,
+                              text: label
+                          }
+                      }
+                  });
+              }
+              return chart;
+          }
+
+          function renderTable(data) {
+                const tableBody = document.querySelector('#metricsTable tbody');
+                tableBody.innerHTML = `
+                    <tr>
+                        <td>CPU Usage</td>
+                        <td>${data.cpu_usage}%</td>
+                    </tr>
+                    <tr>
+                        <td>Memory Usage</td>
+                        <td>${data.memory_usage}%</td>
+                    </tr>
+                    <tr>
+                        <td>Disk Usage</td>
+                        <td>${data.disk_usage}</td>
+                    </tr>
+                    <tr>
+                        <td>Network Usage</td>
+                        <td>${data.network_usage}</td>
+                    </tr>
+                `;
+            }
+          // Function to render or update all charts
+          async function renderCharts() {
+              const data = await fetchData();
+              if (data) {
+                  ramChart = updatePieChart(ramChart, 'ramChart', 'RAM Usage', data.memory_usage, 100, '#ff6384');
+                  cpuChart = updatePieChart(cpuChart, 'cpuChart', 'CPU Usage', data.cpu_usage, 100, '#ffce56');
+                  diskChart = updatePieChart(diskChart, 'diskChart', 'Disk Usage', parseFloat(data.disk_usage), 100, '#4bc0c0');
+                  renderTable(data);
+              }
+          }
+
+          // Initial render of all charts
+          await renderCharts();
+
+          // Set an interval to refresh the charts every 5 seconds
+          setInterval(renderCharts, 1000);
+      });
+  </script>
+</body>
+</html>
